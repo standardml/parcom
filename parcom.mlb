@@ -1,0 +1,21 @@
+(* Combinator parsing *)
+
+$(MLTON_ROOT)/basis/basis.mlb
+
+(* Utilities (should be in some library) *)
+(* Streams *)
+src/util/stream-sig.sml
+src/util/stream.sml
+(* File positions *)
+src/util/pos-sig.sml
+src/util/pos.sml
+
+(* Parcom proper *)
+src/parse-sig.sml
+src/parse.sml
+
+src/charparse-sig.sml
+src/charparse.sml
+
+src/tokparse-sig.sml
+src/tokparse.sml

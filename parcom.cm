@@ -1,0 +1,22 @@
+(* Combinator parsing *)
+Group is
+
+$/basis.cm
+
+(* utilities, to be replaced by some library extension *)
+(* lazy streams *)
+src/util/stream-sig.sml
+src/util/stream.sml
+(* file positions *)
+src/util/pos-sig.sml
+src/util/pos.sml
+
+(* Proper parcom *)
+src/parse-sig.sml
+src/parse.sml
+
+src/charparse-sig.sml
+src/charparse.sml
+
+src/tokparse-sig.sml
+src/tokparse.sml
