@@ -1,6 +1,6 @@
 (* Token parsers, a simple lexer implementation based on language definitions *)
 
-functor TokenParser (Lang : LANGUAGE_DEF) :> TOKEN_PARSER =
+functor TokenParser (Lang : LANGUAGE_DEF) = (*:> TOKEN_PARSER =*)
 struct
 
     fun elem x = List.exists (fn y => x = y)
@@ -16,12 +16,12 @@ struct
 
     type 'a charParser = 'a charParser
 
-    fun lineComment _  =  newLine || done #"\n" || (anyChar >> lineComment ())
-    val bcNested       = fail "Not implemented!"
-    fun bcUnnested _   = string Lang.commentEnd || (anyChar >> bcUnnested ())
+    fun lineComment _  = newLine || done #"\n" || (anyChar >> $ lineComment)
+    val bcNested       = fail "Not implemented!" : string charParser
+    fun bcUnnested _   = string Lang.commentEnd || (anyChar >> $ bcUnnested)
     val comment        =
-	(string Lang.commentLine >> lineComment () >> succeed ())
-	    || (string Lang.commentStart >> bcUnnested () >> succeed ())
+	(string Lang.commentLine >> $ lineComment >> succeed ())
+	    || (string Lang.commentStart >> $ bcUnnested >> succeed ())
 
     val whiteSpace     = repeati ((space >> succeed ()) || comment)
     fun lexeme p       = p << whiteSpace
@@ -36,7 +36,7 @@ struct
 	    lexeme (name suchthat (fn x => x = kw)) >> succeed ()
 	else fail "Not a reserved name"
 
-    val opName         =
+     val opName         =
         Lang.opStart && repeat Lang.opLetter wth implode o op::
     val operator       =
 	lexeme (opName suchthat (fn x => notElem x Lang.reservedOpNames))
