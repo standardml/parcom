@@ -1,6 +1,6 @@
 (* Token parsers, a simple lexer implementation based on language definitions *)
 
-functor TokenParser (Lang : LANGUAGE_DEF) = (*:> TOKEN_PARSER =*)
+functor TokenParser (Lang : LANGUAGE_DEF) :> TOKEN_PARSER =
 struct
 
     fun elem x = List.exists (fn y => x = y)
@@ -12,18 +12,22 @@ struct
     infixr 3 &&
     infix  2 -- ##
     infix  2 wth suchthat return guard when
-    infixr 1 ||
+    infixr 1 || <|> ??
 
     type 'a charParser = 'a charParser
 
-    fun lineComment _  = newLine || done #"\n" || (anyChar >> $ lineComment)
-    val bcNested       = fail "Not implemented!" : string charParser
+    fun lineComment _  = newLine <|> done #"\n" <|> (anyChar >> $ lineComment)
+    fun bcNested _     =
+	((try (string Lang.commentStart) >> $ bcNested >> string Lang.commentEnd)
+	     <|> anyChar wth Char.toString) >> $ bcNested
     fun bcUnnested _   = string Lang.commentEnd || (anyChar >> $ bcUnnested)
     val comment        =
 	(string Lang.commentLine >> $ lineComment >> succeed ())
-	    || (string Lang.commentStart >> $ bcUnnested >> succeed ())
+	    || (string Lang.commentStart >>
+		   $ (if Lang.nestedComments then bcNested else bcUnnested)
+		       >> succeed ())
 
-    val whiteSpace     = repeati ((space >> succeed ()) || comment)
+    val whiteSpace     = repeatSkip ((space return ()) || comment)
     fun lexeme p       = p << whiteSpace
     fun symbol s       = lexeme (string s)
 
@@ -33,16 +37,16 @@ struct
 	lexeme (name suchthat (fn x => notElem x Lang.reservedNames))
     fun reserved kw    =
 	if elem kw Lang.reservedNames then
-	    lexeme (name suchthat (fn x => x = kw)) >> succeed ()
+	    lexeme (name suchthat (fn x => x = kw)) return ()
 	else fail "Not a reserved name"
 
-     val opName         =
+    val opName         =
         Lang.opStart && repeat Lang.opLetter wth implode o op::
     val operator       =
 	lexeme (opName suchthat (fn x => notElem x Lang.reservedOpNames))
     fun reservedOp rop =
 	if elem rop Lang.reservedOpNames then
-	    lexeme (opName suchthat (fn x => x = rop)) >> succeed ()
+	    lexeme (opName suchthat (fn x => x = rop)) return ()
 	else fail "Not a reserved operator"
 
     fun parens p       = middle (symbol "(") p (symbol ")")
@@ -54,10 +58,10 @@ struct
     val comma          = symbol ","
     val colon          = symbol ":"
     val dot            = symbol "."
-    fun semiSep p      = separate0 p semi
-    fun semiSep1 p     = separate p semi
-    fun commaSep p     = separate0 p comma
-    fun commaSep1 p    = separate p comma
+    fun semiSep p      = separate p semi
+    fun semiSep1 p     = separate1 p semi
+    fun commaSep p     = separate p comma
+    fun commaSep1 p    = separate1 p comma
 
     val charLit        =
 	((string "\\" && (anyChar wth Char.toString) wth op^)

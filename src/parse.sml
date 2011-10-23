@@ -10,6 +10,7 @@ struct
   type ('a, 't) parser = pos * 't stream -> 'a * pos * pos * 't stream
 
   infix  2 -- ##
+  infixr 1 <|> ??
 
   type message = string
   exception Fail of (pos * message list)
@@ -23,7 +24,7 @@ struct
         case Stream.force ts of
             Stream.Nil => (x, pos, pos, ts)
           | Stream.Cons _ =>
-              raise Fail (Pos.rightedge pos, ["expected end of stream"])
+              raise Fail (Pos.rightedge pos, ["unexpected token"])
 
   fun any (pos, ts) =
         case Stream.force ts of
@@ -44,6 +45,20 @@ struct
             q p1 (pos, ts)
             handle Fail (p2, err2) =>
                 raise Fail (Pos.max (p1, p2), err1 @ err2)
+
+  fun (p <|> q) (pos, ts) =
+      p (pos, ts)
+      handle Fail (p1, err1) =>
+	     if Pos.getabs pos = Pos.getabs p1 then q (pos, ts)
+	     else raise Fail (p1, err1)
+
+  fun try p (pos, ts) =
+      p (pos, ts)
+      handle Fail (_, err1) => raise Fail (pos, err1)
+
+  fun (p ?? s) (pos, ts) =
+      p (pos, ts)
+      handle Fail (pos, errs) => raise Fail (pos, errs @ ["expected "^s])
 
   fun lookahead p q (pos, ts) =
         let val (x, _, _, _) = p (pos, ts)
@@ -100,7 +115,7 @@ struct
   infixr 3 &&
   infix  2 -- ##
   infix  2 wth suchthat return guard when
-  infixr 1 ||
+  infixr 1 || <|> ??
 
   fun p && q = p -- (fn x => q -- (fn y => succeed (x, y)))
   fun p || q = p ## (fn _ => q)
@@ -129,32 +144,52 @@ struct
   fun optional f x p = p wth f || succeed x
 
 
-  fun first p q    = p -- (fn x => q return x)
+  fun first  p q   = p -- (fn x => q return x)
   fun second p q   = p -- (fn _ => q)
   fun middle p q r = p -- (fn _ => q -- (fn x => r return x))
 
   fun (p << q) = first p q
   fun (p >> q) = second p q
 
-  fun repeat p = fix (fn rep => p && rep wth op:: || succeed [])
+  fun repeat p  = fix (fn rep => p && rep wth op:: || succeed [])
 
   fun repeat1 p = p && repeat p wth op::
 
   fun repeatn n p =
     let
-      fun rep 0 () = succeed ()
-        | rep n () = second p ($(rep (n - 1)))
+      fun rep 0 () = succeed []
+        | rep n () = p && ($(rep (n - 1))) wth op::
     in
       $(rep n)
     end
 
-  fun repeati p = fix (fn rep => p >> rep || succeed ())
+  fun repeatSkip  p = fix (fn rep => p >> rep || succeed ())
+  fun repeatSkip1 p = p >> repeatSkip p
 
-  fun separate  p q = p && repeat (second q p) wth op::
-  fun separate0 p q = separate p q || succeed []
-  fun separate' p q = first (separate p q) (opt q)
+  fun separate1 p q = p && repeat (second q p) wth op::
+  fun separate  p q = separate p q || succeed []
+  fun sepEnd'   p q = first (separate p q) (opt q)
+  fun sepEnd1'  p q = separate1 p q << opt q
+  fun sepEnd    p q = repeat (p << q)
+  fun sepEnd1   p q = repeat1 (p << q)
 
   fun join p = p -- (fn q => q)
+
+  fun until    p q =
+      let fun aux _ = (q return []) <|> p >> $ aux
+      in $ aux end
+
+  (* chaining of parsers *)
+  fun chainr1 p opp   =
+      p -- (fn v => (opp && chainr1 p opp wth (fn (f, v') => f (v, v')))
+		      <|> succeed v)
+  fun chainr  p opp d = chainr1 p opp <|> succeed d
+  fun chainl1 p opp   =
+      p && (repeat (opp && p)) wth
+        (fn (v, ts) => List.foldl (fn ((f, vr), vl) => f (vl, vr)) v ts)
+  fun chainl  p opp d = chainl1 p opp <|> succeed d
+
+  fun not p = try (p >> fail "unexpected token") <|> succeed ()
 
   (***** pre/in/post-fix parsing *****)
 

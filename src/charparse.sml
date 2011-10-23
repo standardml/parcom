@@ -28,7 +28,7 @@ struct
     val newLine   = char #"\n"
     val tab       = char #"\t"
     val space     = satisfy Char.isSpace
-    val spaces    = repeati space
+    val spaces    = repeatSkip space
     val satisfy   = satisfy
 
 end

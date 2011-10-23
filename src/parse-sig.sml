@@ -20,6 +20,13 @@ sig
     val -- : ('a, 't) parser * ('a -> ('b, 't) parser) -> ('b, 't) parser
     (* sequential failing composition of parsers *)
     val ## : ('a, 't) parser * (Pos.pos -> ('a, 't) parser) -> ('a, 't) parser
+    (* fail-fast composition of parsers *)
+    val <|> : ('a, 't) parser * ('a, 't) parser -> ('a, 't) parser
+    (* error reporting combinator *)
+    val ?? : ('a, 't) parser * string -> ('a, 't) parser
+
+    (* doesn't consume input if fails *)
+    val try : ('a, 't) parser -> ('a, 't) parser
 
     (* grab position *)
     val !! : ('a, 't) parser  -> ('a * Pos.pos, 't) parser
@@ -115,9 +122,12 @@ sig
   (* one or more *)
   val repeat1  : ('a, 't) parser -> ('a list, 't) parser 
   (* exact number *)
-  val repeatn  : int -> ('a, 't) parser -> (unit, 't) parser
-  (* avoid building result *)
-  val repeati  : ('a, 't) parser -> (unit, 't) parser
+  val repeatn  : int -> ('a, 't) parser -> ('a list, 't) parser
+
+  (* skip zero or more copies *)
+  val repeatSkip  : ('a, 't) parser -> (unit, 't) parser
+  (* skip one or more copies *)
+  val repeatSkip1 : ('a, 't) parser -> (unit, 't) parser
 
   (* parse two things, yielding value of first *)
   val first    : ('a, 't) parser -> ('b, 't) parser -> ('a, 't) parser 
@@ -127,17 +137,39 @@ sig
   val >>       : ('a, 't) parser * ('b, 't) parser -> ('b, 't) parser 
   (* .... middle of three *)
   val middle   : ('a, 't) parser -> ('b, 't) parser -> ('c, 't) parser 
-                 -> ('b, 't) parser 
+                 -> ('b, 't) parser
 
   (* parse one or more, with given separator between items *)
-  val separate : ('a, 't) parser -> ('b, 't) parser -> ('a list, 't) parser 
+  val separate1: ('a, 't) parser -> ('b, 't) parser -> ('a list, 't) parser 
   (* ... zero or more *)
-  val separate0: ('a, 't) parser -> ('b, 't) parser -> ('a list, 't) parser 
+  val separate : ('a, 't) parser -> ('b, 't) parser -> ('a list, 't) parser 
+  (* one or more, obligatory trailing separator *)
+  val sepEnd1  : ('a, 't) parser -> ('b, 't) parser -> ('a list, 't) parser 
+  (* zero or more, obligatory trailing separator *)
+  val sepEnd   : ('a, 't) parser -> ('b, 't) parser -> ('a list, 't) parser
   (* one or more, allowing trailing separator *)
-  val separate': ('a, 't) parser -> ('b, 't) parser -> ('a list, 't) parser 
+  val sepEnd1' : ('a, 't) parser -> ('b, 't) parser -> ('a list, 't) parser 
+  (* zero or more, allowing trailing separator *)
+  val sepEnd'  : ('a, 't) parser -> ('b, 't) parser -> ('a list, 't) parser
+
+  (* parse with the first parser until the other parser succeeds *)
+  val until    : ('a, 't) parser -> ('b, 't) parser -> ('a list, 't) parser
 
   (* nested parsers *)
   val join     : (('a, 't) parser, 't) parser -> ('a, 't) parser
+
+  (* chaining of parsers *)
+  val chainr   : ('a, 't) parser -> ('a * 'a -> 'a, 't) parser ->
+		 'a -> ('a, 't) parser
+  val chainr1  : ('a, 't) parser -> ('a * 'a -> 'a, 't) parser ->
+		 ('a, 't) parser
+  val chainl   : ('a, 't) parser -> ('a * 'a -> 'a, 't) parser ->
+		 'a -> ('a, 't) parser
+  val chainl1  : ('a, 't) parser -> ('a * 'a -> 'a, 't) parser ->
+		 ('a, 't) parser
+
+  (* succeeds without consuming anything if the given parser fails *)
+  val not      : ('a, 't) parser -> (unit, 't) parser
 
   (***** Pre/In/Post-fix utilities *****)
 
