@@ -16,16 +16,28 @@ struct
 
     type 'a charParser = 'a charParser
 
-    fun lineComment _  = newLine <|> done #"\n" <|> (anyChar >> $ lineComment)
-    fun bcNested _     =
-	((try (string Lang.commentStart) >> $ bcNested >> string Lang.commentEnd)
-	     <|> anyChar wth Char.toString) >> $ bcNested
-    fun bcUnnested _   = string Lang.commentEnd || (anyChar >> $ bcUnnested)
-    val comment        =
-	(string Lang.commentLine >> $ lineComment >> succeed ())
-	    || (string Lang.commentStart >>
-		   $ (if Lang.nestedComments then bcNested else bcUnnested)
-		       >> succeed ())
+    val lineComment   =
+	let fun comLine _  = newLine <|> done #"\n" <|> (anyChar >> $ comLine)
+	in case Lang.commentLine of
+	       SOME s => string s >> $ comLine return ()
+	     | NONE   => fail "Single-line comments not supported"
+	end
+    val mlComment      =
+	case Lang.commentStart of
+	    SOME st =>
+	    (case Lang.commentEnd of
+		 SOME ed =>
+		 let
+		     fun bcNested _    =
+			 ((try (string st) >> $ bcNested >> string ed return ())
+			      <|> anyChar return ()) << $ bcNested
+		     fun bcUnnested _  =
+			 string ed return () || (anyChar >> $ bcUnnested)
+		 in if Lang.nestedComments then $ bcNested else $bcUnnested
+		 end
+	       | NONE => fail "Multi-line comments not supported")
+	  | NONE => fail "Multi-line comments not supported"
+    val comment        = lineComment <|> mlComment
 
     val whiteSpace     = repeatSkip ((space return ()) || comment)
     fun lexeme p       = p << whiteSpace

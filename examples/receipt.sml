@@ -51,13 +51,14 @@ struct
   infixr 1 ||
 
   structure ReceiptDef :> LANGUAGE_DEF =
+  (* can also use the SimpleStyle functor from langparse.sml *)
   struct
 
     type scanner = char CharParser.charParser
 
-    val commentStart   = "(*"
-    val commentEnd     = "*)"
-    val commentLine    = "##"
+    val commentStart   = NONE
+    val commentEnd     = NONE
+    val commentLine    = NONE
     val nestedComments = false
 
     val identLetter    = CharParser.letter

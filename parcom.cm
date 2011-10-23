@@ -1,4 +1,4 @@
-(* Combinator parsing *)
+(* parcom -- combinator parsing *)
 Group is
 
 $/basis.cm
@@ -11,7 +11,7 @@ src/util/stream.sml
 src/util/pos-sig.sml
 src/util/pos.sml
 
-(* Proper parcom *)
+(* parcom proper *)
 src/parse-sig.sml
 src/parse.sml
 
@@ -20,3 +20,4 @@ src/charparse.sml
 
 src/tokparse-sig.sml
 src/tokparse.sml
+src/langparse.sml

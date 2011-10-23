@@ -19,3 +19,4 @@ src/charparse.sml
 
 src/tokparse-sig.sml
 src/tokparse.sml
+src/langparse.sml

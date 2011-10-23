@@ -1,17 +1,25 @@
 (* Signatures of language definitions for lexing and lexers
    based on those definitions *)
 
+signature MINI_LANGUAGE_DEF =
+sig
+
+    val reservedNames   : string list
+    val reservedOpNames : string list
+
+end
+
 signature LANGUAGE_DEF =
 sig
 
     type scanner = char CharParser.charParser
 
     (* multiline comment start/end sequence *)
-    val commentStart    : string
-    val commentEnd      : string
+    val commentStart    : string option
+    val commentEnd      : string option
 
     (* single line comment start *)
-    val commentLine     : string
+    val commentLine     : string option
 
     (* do the multiline comments support nesting *)
     val nestedComments  : bool
