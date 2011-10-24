@@ -3,7 +3,7 @@
 functor SimpleStyle (Def : MINI_LANGUAGE_DEF) :> LANGUAGE_DEF =
 struct
 
-    open Parsing
+    open ParserCombinators
     open CharParser
     infixr 1 <|>
 
@@ -29,7 +29,7 @@ end
 functor JavaStyle (Def : MINI_LANGUAGE_DEF) :> LANGUAGE_DEF =
 struct
 
-    open Parsing
+    open ParserCombinators
     open CharParser
     infixr 1 <|>
 
@@ -55,7 +55,7 @@ end
 functor MLStyle (Def : MINI_LANGUAGE_DEF) :> LANGUAGE_DEF =
 struct
 
-    open Parsing
+    open ParserCombinators
     open CharParser
     infixr 1 <|>
 

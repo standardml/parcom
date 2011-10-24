@@ -6,7 +6,7 @@ struct
     fun elem x = List.exists (fn y => x = y)
     fun notElem x = List.all (fn y => x <> y)
 
-    open Parsing
+    open ParserCombinators
     open CharParser
     infixr 4 << >>
     infixr 3 &&

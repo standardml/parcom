@@ -13,7 +13,7 @@ structure SimpleReceipt =
 (* Simple implementation, w/o a proper lexer *)
 struct
 
-  open Parsing
+  open ParserCombinators
   open CharParser
 
   infixr 4 << >>
@@ -41,7 +41,7 @@ structure LexReceipt =
 (* An implementation that uses token parser. *)
 struct
 
-  open Parsing
+  open ParserCombinators
   open CharParser
 
   infixr 4 << >>
@@ -63,7 +63,7 @@ struct
 
     val identLetter    = CharParser.letter
     val identStart     = identLetter
-    val opStart        = Parsing.fail "Operators not supported" : scanner
+    val opStart        = fail "Operators not supported" : scanner
     val opLetter       = opStart
     val reservedNames  = ["return", "total"]
     val reservedOpNames= []
@@ -87,9 +87,21 @@ struct
 
 end
 
+fun markstream s fileName =
+    let
+	val initcoord  = Coord.init fileName
+	fun aux xs crd =
+	    Stream.lazy (fn _ => case Stream.front xs of
+				     Stream.Nil          => Stream.Nil
+				   | Stream.Cons (x, xs) =>
+				     Stream.Cons ((x, Pos.pos crd crd),
+						  (aux xs (Coord.nextchar crd))))
+    in aux s initcoord
+    end
+
 (* returns: SOME true *)
-val example1 = (Pos.markstream o Stream.fromlist o String.explode)
-    "book 12.00; plant 2.55; 14.55 total"
+val example1 =
+    markstream (Stream.fromString "book 12.00; plant 2.55; 14.55 total") ""
 
 fun printoptb ob =
     case ob of
@@ -97,14 +109,15 @@ fun printoptb ob =
       | NONE => print "NONE\n"
 
 (* returns: SOME false *)
-val example2 = (Pos.markstream o Stream.fromlist o String.explode)
-    "book 12.00; plant 2.55; 12.55 total"
+val example2 =
+    markstream (Stream.fromString "book 12.00; plant 2.55; 12.55 total") ""
 
 val _ = print "Lexer-less implementation:\n  Example 1: ";
-    printoptb (Parsing.parse SimpleReceipt.receipt example1);
+    printoptb (ParserCombinators.parse SimpleReceipt.receipt example1);
     print "  Example 2: ";
-    printoptb (Parsing.parse SimpleReceipt.receipt example2);
+    printoptb (ParserCombinators.parse SimpleReceipt.receipt example2);
     print "\nToken-parser-using implementation:\n  Example 1: ";
-    printoptb (Parsing.parse LexReceipt.receipt example1);
+    printoptb (ParserCombinators.parse LexReceipt.receipt example1);
     print "  Example 2: ";
-    printoptb (Parsing.parse LexReceipt.receipt example2);
+    printoptb (ParserCombinators.parse LexReceipt.receipt example2);
+

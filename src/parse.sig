@@ -1,6 +1,6 @@
 (* Signatures for standard parsing combinators *)
 
-signature BASIC_PARSING =
+signature BASIC_PARSER =
 sig
 
     (* Parser with token type 't, result type 'a *)
@@ -19,7 +19,7 @@ sig
     (* sequential successful composition of parsers *)
     val -- : ('a, 't) parser * ('a -> ('b, 't) parser) -> ('b, 't) parser
     (* sequential failing composition of parsers *)
-    val ## : ('a, 't) parser * (Pos.pos -> ('a, 't) parser) -> ('a, 't) parser
+    val ## : ('a, 't) parser * (Pos.t -> ('a, 't) parser) -> ('a, 't) parser
     (* fail-fast composition of parsers *)
     val <|> : ('a, 't) parser * ('a, 't) parser -> ('a, 't) parser
     (* error reporting combinator *)
@@ -29,10 +29,10 @@ sig
     val try : ('a, 't) parser -> ('a, 't) parser
 
     (* grab position *)
-    val !! : ('a, 't) parser  -> ('a * Pos.pos, 't) parser
+    val !! : ('a, 't) parser  -> ('a * Pos.t, 't) parser
 
     (* get position *)
-    val get : (Pos.pos -> ('a, 't) parser) -> ('a, 't) parser
+    val get : (Pos.t -> ('a, 't) parser) -> ('a, 't) parser
 
     (* to handle mutually-recursive parsers *)
     val $ : (unit -> ('a, 't) parser) -> ('a, 't) parser
@@ -45,26 +45,26 @@ sig
                       ('b, 't) parser
 
     (* parse this stream before reading any other input *)
-    val push : ('t * Pos.pos) Stream.stream -> 
-                ('a, 't) parser -> ('a, 't) parser
+    (*val push : ('t * Pos.t) Stream.stream -> 
+                ('a, 't) parser -> ('a, 't) parser *)
 
     (* parse a stream *)
-    val parse : ('a, 't) parser -> ('t * Pos.pos) Stream.stream -> 
+    val parse : ('a, 't) parser -> ('t * Pos.t) Stream.stream -> 
                  'a option
 
     (* transform p s
 
        parses consecutive maximal prefixes of s with p as many times
        as possible, outputting the results as a stream *)
-    val transform : ('a, 't) parser -> ('t * Pos.pos) Stream.stream -> 
+    val transform : ('a, 't) parser -> ('t * Pos.t) Stream.stream -> 
                      'a Stream.stream
 
 end
 
-signature PARSING =
+signature PARSER_COMBINATORS =
 sig
 
-  include BASIC_PARSING
+  include BASIC_PARSER
 
   (*
     infixr 4 << >>
@@ -87,7 +87,7 @@ sig
   val return   : ('b, 't) parser * 'a -> ('a, 't) parser
 
   (* apply function to failure position *)
-  val guard    : ('a, 't) parser * (Pos.pos -> 'b) -> ('a, 't) parser
+  val guard    : ('a, 't) parser * (Pos.t -> 'b) -> ('a, 't) parser
 
   (* n-ary sequential composition *)
   val seq      : ('a, 't) parser list -> ('a list, 't) parser

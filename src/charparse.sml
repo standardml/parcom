@@ -3,7 +3,7 @@
 structure CharParser :> CHAR_PARSER =
 struct
 
-    open Parsing
+    open ParserCombinators
     infixr 4 << >>
 
     type 'a charParser = ('a, char) parser

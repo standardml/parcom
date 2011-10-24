@@ -1,10 +1,10 @@
 (* Implementation of the parsing combinators *)
 
-structure BasicParsing : BASIC_PARSING =
+structure BasicParser : BASIC_PARSER =
   (* LL-style parsing combinators. *)
 struct
 
-  type pos = Pos.pos
+  type pos = Pos.t
   type 't stream = ('t * pos) Stream.stream
 
   type ('a, 't) parser = pos * 't stream -> 'a * pos * pos * 't stream
@@ -21,22 +21,22 @@ struct
   fun fail s (pos, ts) = raise Fail (pos, [s])
 
   fun done x (pos, ts) =
-        case Stream.force ts of
+        case Stream.front ts of
             Stream.Nil => (x, pos, pos, ts)
           | Stream.Cons _ =>
-              raise Fail (Pos.rightedge pos, ["unexpected token"])
+              raise Fail (pos, ["unexpected token"])
 
   fun any (pos, ts) =
-        case Stream.force ts of
+        case Stream.front ts of
             Stream.Nil =>
-              raise Fail (Pos.rightedge pos, ["unexepected end of stream"])
+              raise Fail (pos, ["unexepected end of stream"])
           | Stream.Cons ((x, pos), ts) => (x, pos, pos, ts)
 
   fun (p -- q) (pos, ts) =
         let val (x, posx, pos, ts) = p (pos, ts)
             val (y, posy, pos, ts) = q x (pos, ts)
         in
-            (y, Pos.union (posx, posy), pos, ts)
+            (y, Pos.union posx posy, pos, ts)
         end
 
   fun (p ## q) (pos, ts) =
@@ -44,13 +44,14 @@ struct
         handle Fail (p1, err1) =>
             q p1 (pos, ts)
             handle Fail (p2, err2) =>
-                raise Fail (Pos.max (p1, p2), err1 @ err2)
+                raise Fail (Pos.max p1 p2, err1 @ err2)
 
   fun (p <|> q) (pos, ts) =
       p (pos, ts)
       handle Fail (p1, err1) =>
-	     if Pos.getabs pos = Pos.getabs p1 then q (pos, ts)
-	     else raise Fail (p1, err1)
+	     (case Coord.compare (Pos.left pos, Pos.left p1) of
+		  EQUAL => q (pos, ts)
+		| _  => raise Fail (p1, err1))
 
   fun try p (pos, ts) =
       p (pos, ts)
@@ -77,13 +78,16 @@ struct
 
   fun fix f (pos, ts) = f (fix f) (pos, ts)
 
+  val initc        = Coord.init ""
+  val initpos      = Pos.pos initc initc
+
   fun parsewith s f p ts =
-        let val (x, _, _, _) = p (Pos.initpos, ts)
+        let val (x, _, _, _) = p (initpos, ts)
         in s x end
         handle Fail err => f err
 
-  fun push ns p (pos, ts) =
-      p (Pos.initpos, Stream.append ns ts)
+(*  fun push ns p (pos, ts) =
+      p (initpos, Stream.append ns ts)*)
 
   fun parse p = parsewith SOME (fn _ => NONE) p
 
@@ -93,19 +97,19 @@ struct
             let
                 val (x, _, pos', ts') = p (pos, ts)
             in
-                Stream.Cons (x, Stream.delay (trans (pos', ts')))
+                Stream.Cons (x, Stream.lazy (trans (pos', ts')))
             end
             handle Fail err => Stream.Nil
     in
-        Stream.delay (trans (Pos.initpos, ts))
+        Stream.lazy (trans (initpos, ts))
     end
 
 end
 
-structure Parsing :> PARSING =
+structure ParserCombinators :> PARSER_COMBINATORS =
 struct
 
-  open BasicParsing
+  open BasicParser
 
   fun flat3 (a, (b, c)) = (a, b, c)
   fun flat4 (a, (b, (c, d))) = (a, b, c, d)

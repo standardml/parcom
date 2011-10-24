@@ -4,7 +4,7 @@ signature CHAR_PARSER =
 sig
 
     (* type synonym for Parsing.parser working on character streams *)
-    type 'a charParser = ('a, char) Parsing.parser
+    type 'a charParser = ('a, char) ParserCombinators.parser
 
     (* (oneOf cs) succeeds if the current character is in the supplied list of
        characters cs. Returns the parsed character. See also satisfy.

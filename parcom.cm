@@ -1,23 +1,32 @@
 (* parcom -- combinator parsing *)
-Group is
+library
 
-$/basis.cm
+  signature PARSER_COMBINATORS
+  signature CHAR_PARSER
+  signature MINI_LANGUAGE_DEF
+  signature LANGUAGE_DEF
+  signature TOKEN_PARSER
 
-(* utilities, to be replaced by some library extension *)
-(* lazy streams *)
-src/util/stream-sig.sml
-src/util/stream.sml
-(* file positions *)
-src/util/pos-sig.sml
-src/util/pos.sml
+  structure ParserCombinators
+  structure CharParser
 
-(* parcom proper *)
-src/parse-sig.sml
-src/parse.sml
+  functor   TokenParser
+  functor   SimpleStyle
+  functor   JavaStyle
+  functor   MLStyle
 
-src/charparse-sig.sml
-src/charparse.sml
+is
 
-src/tokparse-sig.sml
-src/tokparse.sml
-src/langparse.sml
+
+  $SMACKAGE/cmlib/v0/cmlib.cm
+
+  (* parcom proper *)
+  src/parse-sig.sml
+  src/parse.sml
+
+  src/charparse-sig.sml
+  src/charparse.sml
+
+  src/tokparse-sig.sml
+  src/tokparse.sml
+  src/langparse.sml
