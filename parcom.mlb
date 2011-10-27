@@ -5,13 +5,14 @@ $(SMACKAGE)/cmlib/v0/cmlib.mlb
 
 (* Parcom proper *)
 local
-  src/parse-sig.sml
+
+  src/parse.sig
   src/parse.sml
 
-  src/charparse-sig.sml
+  src/charparse.sig
   src/charparse.sml
 
-  src/tokparse-sig.sml
+  src/tokparse.sig
   src/tokparse.sml
   src/langparse.sml
 
