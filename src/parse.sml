@@ -6,71 +6,69 @@ struct
 
   type pos = Pos.t
   type 't stream = ('t * pos) Stream.stream
+  open Either
 
-  type ('a, 't) parser = pos * 't stream -> 'a * pos * pos * 't stream
+  datatype 't message = Unexpected of 't option | Expected of string | Message of string
+  type ('a, 't) parser = pos * 't stream -> (pos * 't message list, 'a * pos * pos * 't stream) either
 
   infix  2 -- ##
   infixr 1 <|> ??
 
-  type message = string
-  exception Fail of (pos * message list)
-
   (* Primitive Parsers *)
 
-  fun succeed x (pos, ts) = (x, pos, pos, ts)
-  fun fail s (pos, ts) = raise Fail (pos, [s])
+  fun succeed x (pos, ts) = Right (x, pos, pos, ts)
+  fun fail s (pos, ts) = Left (pos, [Message s])
 
   fun done x (pos, ts) =
         case Stream.front ts of
-            Stream.Nil => (x, pos, pos, ts)
-          | Stream.Cons _ =>
-              raise Fail (pos, ["unexpected token"])
+            Stream.Nil => Right (x, pos, pos, ts)
+          | Stream.Cons ((x, _), _) => Left (pos, [Unexpected (SOME x)])
 
   fun any (pos, ts) =
         case Stream.front ts of
-            Stream.Nil =>
-              raise Fail (pos, ["unexepected end of stream"])
-          | Stream.Cons ((x, pos), ts) => (x, pos, pos, ts)
+            Stream.Nil => Left (pos, [Unexpected NONE])
+          | Stream.Cons ((x, pos), ts) => Right (x, pos, pos, ts)
 
   fun (p -- q) (pos, ts) =
-        let val (x, posx, pos, ts) = p (pos, ts)
-            val (y, posy, pos, ts) = q x (pos, ts)
-        in
-            (y, Pos.union posx posy, pos, ts)
-        end
+      case p (pos, ts) of
+	    Right (x, posx, pos, ts) => 
+	    (case q x (pos, ts) of
+		 Right (y, posy, pos, ts) => Right (y, Pos.union posx posy, pos, ts)
+	       | Left e => Left e)
+	  | Left e => Left e
 
   fun (p ## q) (pos, ts) =
-        p (pos, ts)
-        handle Fail (p1, err1) =>
-            q p1 (pos, ts)
-            handle Fail (p2, err2) =>
-                raise Fail (Pos.max p1 p2, err1 @ err2)
+      case p (pos, ts) of
+	  Left (pf, errs) => q pf (pos, ts)
+	| x => x
 
   fun (p <|> q) (pos, ts) =
-      p (pos, ts)
-      handle Fail (p1, err1) =>
-	     (case Coord.compare (Pos.left pos, Pos.left p1) of
-		  EQUAL => q (pos, ts)
-		| _  => raise Fail (p1, err1))
+      case p (pos, ts) of
+	  e1 as Left (p1, err1) =>
+	  (case Coord.compare (Pos.left pos, Pos.left p1) of
+	       EQUAL => q (pos, ts)
+	     | _  => e1)
+	| x => x
 
   fun try p (pos, ts) =
-      p (pos, ts)
-      handle Fail (_, err1) => raise Fail (pos, err1)
+      case p (pos, ts) of
+	  Left (_, err1) => Left (pos, err1)
+	| x => x
 
   fun (p ?? s) (pos, ts) =
-      p (pos, ts)
-      handle Fail (pos, errs) => raise Fail (pos, errs @ ["expected "^s])
+      case p (pos, ts) of
+	  Left (pos, errs) => Left (pos, errs @ [Expected s])
+	| x => x
 
   fun lookahead p q (pos, ts) =
-        let val (x, _, _, _) = p (pos, ts)
-        in q x (pos, ts) end
+      case p (pos, ts) of
+	  Right (x, _, _, _) => q x (pos, ts)
+	| Left e => Left e
 
   fun !! p (pos, ts) =
-    let
-      val (x, posx, pos, ts) = p (pos, ts)
-    in
-      ((x, posx), posx, pos, ts)
-    end
+      case p (pos, ts) of
+	  Right (x, posx, pos, ts) => Right ((x, posx), posx, pos, ts)
+	| Left e => Left e
 
   fun get f (pos, ts) = f pos (pos, ts)
       
@@ -82,9 +80,7 @@ struct
   val initpos      = Pos.pos initc initc
 
   fun parsewith s f p ts =
-        let val (x, _, _, _) = p (initpos, ts)
-        in s x end
-        handle Fail err => f err
+      either f (s o (fn (x, _, _, _) => x)) (p (initpos, ts))
 
 (*  fun push ns p (pos, ts) =
       p (initpos, Stream.append ns ts)*)
@@ -94,12 +90,10 @@ struct
   fun transform p ts =
     let
         fun trans (pos, ts) () =
-            let
-                val (x, _, pos', ts') = p (pos, ts)
-            in
+	    case p (pos, ts) of
+		Right (x, _, pos', ts') =>
                 Stream.Cons (x, Stream.lazy (trans (pos', ts')))
-            end
-            handle Fail err => Stream.Nil
+	      | Left _ => Stream.Nil
     in
         Stream.lazy (trans (initpos, ts))
     end
@@ -298,4 +292,3 @@ struct
       (repeat1 p) -- (resolvefixityadj adj assoc)
 
 end
-

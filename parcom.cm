@@ -19,6 +19,8 @@ is
 
 
   $SMACKAGE/cmlib/v0/cmlib.cm
+  src/util/either.sig
+  src/util/either.sml
 
   (* parcom proper *)
   src/parse.sig

@@ -6,6 +6,9 @@ $(SMACKAGE)/cmlib/v0/cmlib.mlb
 (* Parcom proper *)
 local
 
+  src/util/either.sig
+  src/util/either.sml
+
   src/parse.sig
   src/parse.sml
 
