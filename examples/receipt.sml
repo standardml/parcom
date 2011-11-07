@@ -20,7 +20,7 @@ struct
   infixr 3 &&
   infix  2 -- ##
   infix  2 wth suchthat return guard when
-  infixr 1 ||
+  infixr 1 || <|>
 
   val price   : int charParser =
     repeat1 digit && (char #"." >> digit && digit << spaces) when
@@ -29,7 +29,7 @@ struct
   val total   = price << string "total" << spaces
   val product =
     (string "return" >> spaces >> price << char #";" << spaces wth op~)
-      || (repeat1 letter >> spaces >> price << char #";" << spaces)
+      <|> (repeat1 letter >> spaces >> price << char #";" << spaces)
 
   val receipt : bool charParser =
     spaces >> repeat product && total wth
@@ -48,7 +48,7 @@ struct
   infixr 3 &&
   infix  2 -- ##
   infix  2 wth suchthat return guard when
-  infixr 1 ||
+  infixr 1 || <|>
 
   structure ReceiptDef :> LANGUAGE_DEF =
   (* can also use the SimpleStyle functor from langparse.sml *)
@@ -87,6 +87,9 @@ struct
 
 end
 
+fun printRes pr =
+    print (Sum.sumR (fn b => Bool.toString b ^ "\n") pr)
+
 fun markstream s fileName =
     let
 	val initcoord  = Coord.init fileName
@@ -103,21 +106,16 @@ fun markstream s fileName =
 val example1 =
     markstream (Stream.fromString "book 12.00; plant 2.55; 14.55 total") ""
 
-fun printoptb ob =
-    case ob of
-	SOME b => print ("SOME " ^ Bool.toString b ^ "\n")
-      | NONE => print "NONE\n"
-
 (* returns: SOME false *)
 val example2 =
     markstream (Stream.fromString "book 12.00; plant 2.55; 12.55 total") ""
 
 val _ = print "Lexer-less implementation:\n  Example 1: ";
-    printoptb (ParserCombinators.parse SimpleReceipt.receipt example1);
+    printRes (CharParser.parseChars SimpleReceipt.receipt example1);
     print "  Example 2: ";
-    printoptb (ParserCombinators.parse SimpleReceipt.receipt example2);
+    printRes (CharParser.parseChars SimpleReceipt.receipt example2);
     print "\nToken-parser-using implementation:\n  Example 1: ";
-    printoptb (ParserCombinators.parse LexReceipt.receipt example1);
+    printRes (CharParser.parseChars LexReceipt.receipt example1);
     print "  Example 2: ";
-    printoptb (ParserCombinators.parse LexReceipt.receipt example2);
+    printRes (ParserCombinators.simpleParse LexReceipt.receipt example2);
 

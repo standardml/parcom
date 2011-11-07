@@ -1,13 +1,10 @@
 (* Combinator parsing *)
 
 $(MLTON_ROOT)/basis/basis.mlb
-$(SMACKAGE)/cmlib/v0/cmlib.mlb
+$(SMACKAGE)/cmlib/v1/cmlib.mlb
 
 (* Parcom proper *)
 local
-
-  src/util/either.sig
-  src/util/either.sml
 
   src/parse.sig
   src/parse.sml

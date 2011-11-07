@@ -5,6 +5,7 @@ sig
 
     (* type synonym for Parsing.parser working on character streams *)
     type 'a charParser = ('a, char) ParserCombinators.parser
+    type message = char ParserCombinators.message
 
     (* (oneOf cs) succeeds if the current character is in the supplied list of
        characters cs. Returns the parsed character. See also satisfy.
@@ -89,5 +90,12 @@ sig
        function f returns true. Returns the character that is actually parsed.
      *)
     val satisfy : (char -> bool) -> char charParser
+
+    (* Formatter for messages over char streams *)
+    val messageToString : message -> string
+
+    (* Parse function that uses the default formatter for char streams *)
+    val parseChars : 'a charParser -> (char * Pos.t) Stream.stream ->
+		     (string, 'a) Sum.sum
 
 end

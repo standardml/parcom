@@ -1,99 +1,119 @@
 (* Implementation of the parsing combinators *)
 
-structure BasicParser : BASIC_PARSER =
+structure BasicParser :> BASIC_PARSER =
   (* LL-style parsing combinators. *)
 struct
 
   type pos = Pos.t
+  type coord = Coord.coord
   type 't stream = ('t * pos) Stream.stream
-  open Either
+  open Sum
 
-  datatype 't message = Unexpected of 't option | Expected of string | Message of string
-  type ('a, 't) parser = pos * 't stream -> (pos * 't message list, 'a * pos * pos * 't stream) either
+  datatype 't message  = Unexpected of 't option | Expected of string
+		       | Message of string
+  type ('a, 't) parser = bool ref -> pos * 't stream ->
+			 (pos * 't message list, 'a * pos * pos * 't stream) sum
 
   infix  2 -- ##
   infixr 1 <|> ??
 
   (* Primitive Parsers *)
 
-  fun succeed x (pos, ts) = Right (x, pos, pos, ts)
-  fun fail s (pos, ts) = Left (pos, [Message s])
+  fun succeed x _ (pos, ts) = INR (x, pos, pos, ts)
+  fun fail s _ (pos, ts) = INL (pos, [Message s])
 
-  fun done x (pos, ts) =
+  fun eos _ (pos, ts) =
+      case Stream.front ts of
+	  Stream.Nil => INR ((), pos, pos, ts)
+	| Stream.Cons ((x, _), _) => INL (pos, [Unexpected (SOME x)])
+
+  fun any b (pos, ts) =
         case Stream.front ts of
-            Stream.Nil => Right (x, pos, pos, ts)
-          | Stream.Cons ((x, _), _) => Left (pos, [Unexpected (SOME x)])
+            Stream.Nil => INL (pos, [Unexpected NONE])
+          | Stream.Cons ((x, pos), ts) => (b := true; INR (x, pos, pos, ts))
 
-  fun any (pos, ts) =
-        case Stream.front ts of
-            Stream.Nil => Left (pos, [Unexpected NONE])
-          | Stream.Cons ((x, pos), ts) => Right (x, pos, pos, ts)
+  fun (p -- q) b (pos, ts) =
+      bindR (p b (pos, ts))
+	    (fn (x, posx, pos, ts) =>
+		let val nb = ref false
+		in map (fn e => (b := (!b orelse !nb); e))
+		       (fn (y, posy, pos, ts) => (y, Pos.union posx posy, pos, ts))
+		       (q x nb (pos, ts))
+		end)
 
-  fun (p -- q) (pos, ts) =
-      case p (pos, ts) of
-	    Right (x, posx, pos, ts) => 
-	    (case q x (pos, ts) of
-		 Right (y, posy, pos, ts) => Right (y, Pos.union posx posy, pos, ts)
-	       | Left e => Left e)
-	  | Left e => Left e
+  fun (p ## q) b (pos, ts) =
+      case p b (pos, ts) of
+	  INL (pf, errs) => q pf b (pos, ts)
+	| INR x => INR x
 
-  fun (p ## q) (pos, ts) =
-      case p (pos, ts) of
-	  Left (pf, errs) => q pf (pos, ts)
-	| x => x
+  fun (p <|> q) b (pos, ts) =
+      bindL (p b (pos, ts)) (fn e => if !b then INL e else q b (pos, ts))
 
-  fun (p <|> q) (pos, ts) =
-      case p (pos, ts) of
-	  e1 as Left (p1, err1) =>
-	  (case Coord.compare (Pos.left pos, Pos.left p1) of
-	       EQUAL => q (pos, ts)
-	     | _  => e1)
-	| x => x
+  fun try p b (pos, ts) =
+      mapL (fn e => (b := false; e)) (p b (pos, ts))
 
-  fun try p (pos, ts) =
-      case p (pos, ts) of
-	  Left (_, err1) => Left (pos, err1)
-	| x => x
+  fun (p ?? s) b (pos, ts) =
+      mapL (fn (pos, errs) => (pos, errs @ [Expected s])) (p b (pos, ts))
 
-  fun (p ?? s) (pos, ts) =
-      case p (pos, ts) of
-	  Left (pos, errs) => Left (pos, errs @ [Expected s])
-	| x => x
+  fun lookahead p q b (pos, ts) =
+      bindR (p b (pos, ts)) (fn (x, _, _, _) => q x b (pos, ts))
 
-  fun lookahead p q (pos, ts) =
-      case p (pos, ts) of
-	  Right (x, _, _, _) => q x (pos, ts)
-	| Left e => Left e
+  fun !! p b (pos, ts) =
+      mapR (fn (x, posx, pos, ts) => ((x, posx), posx, pos, ts)) (p b (pos, ts))
 
-  fun !! p (pos, ts) =
-      case p (pos, ts) of
-	  Right (x, posx, pos, ts) => Right ((x, posx), posx, pos, ts)
-	| Left e => Left e
-
-  fun get f (pos, ts) = f pos (pos, ts)
+  fun get f b (pos, ts) = f pos b (pos, ts)
       
-  fun $ p (pos, ts) = p () (pos, ts)
+  fun $ p b (pos, ts) = p () b (pos, ts)
 
-  fun fix f (pos, ts) = f (fix f) (pos, ts)
+  fun fix f b (pos, ts) = f (fix f) b (pos, ts)
 
   val initc        = Coord.init ""
   val initpos      = Pos.pos initc initc
 
-  fun parsewith s f p ts =
-      either f (s o (fn (x, _, _, _) => x)) (p (initpos, ts))
+  fun runParser (p : ('a, 't) parser) ts =
+      mapR #1 (p (ref false) (initpos, ts))
+  fun parsewith s f p =
+      sum f s o runParser p
 
 (*  fun push ns p (pos, ts) =
       p (initpos, Stream.append ns ts)*)
+  fun messageToString m =
+      case m of
+	  Unexpected (SOME t) => "unexpected token"
+	| Unexpected NONE     => "unexpected end of stream"
+	| Expected s          => s
+	| Message m           => m
 
-  fun parse p = parsewith SOME (fn _ => NONE) p
+  fun printError fmt (p, msgs) =
+      let fun unex msgs =
+	      case List.filter (fn Unexpected _ => true | _ => false) msgs of
+		  x :: _ => fmt x ^ ". "
+		| _ => ""
+	  fun exps xs = case xs of
+			    [] => "" (* impossible case *)
+			  | [x] => " or " ^ fmt x ^ ". "
+			  | x :: xs => ", " ^ fmt x ^ exps xs
+	  fun exp msgs =
+	      case List.filter (fn Expected _ => true | _ => false) msgs of
+		  [] => ""
+		| [x] => "Expected " ^ fmt x ^ ". "
+		| x :: xs  => "Expected " ^ fmt x ^ exps xs
+	  fun msg msgs = (String.concatWith ". " o List.map (fn Message m => m))
+			     (List.filter (fn Message _ => true | _ => false) msgs)
+      in "Parse error at " ^ Pos.toString p ^ ": " ^
+	 unex msgs ^ exp msgs ^ msg msgs
+      end
+
+  fun parse fmt p = mapL (printError fmt) o runParser p
+  fun simpleParse p = parse messageToString p
 
   fun transform p ts =
     let
         fun trans (pos, ts) () =
-	    case p (pos, ts) of
-		Right (x, _, pos', ts') =>
+	    case p (ref false) (pos, ts) of
+		INR (x, _, pos', ts') =>
                 Stream.Cons (x, Stream.lazy (trans (pos', ts')))
-	      | Left _ => Stream.Nil
+	      | INL _ => Stream.Nil
     in
         Stream.lazy (trans (initpos, ts))
     end
@@ -116,7 +136,7 @@ struct
   infixr 1 || <|> ??
 
   fun p && q = p -- (fn x => q -- (fn y => succeed (x, y)))
-  fun p || q = p ## (fn _ => q)
+  fun p || q = try p <|> q (*p ## (fn _ => q)*)
 
   fun p wth f      = p -- succeed o f
   fun p suchthat g =
@@ -124,7 +144,7 @@ struct
   fun p when f     = 
       p -- (fn x => case f x of SOME r => succeed r | NONE => fail "")
   fun p return x   = p -- (fn _ => succeed x)
-  fun p guard g    = p ## (fn errpos => (ignore (g errpos); fail ""))
+  (*fun p guard g    = p ## (fn errpos => (ignore (g errpos); fail ""))*)
 
   fun seq ps = foldr (fn (ph, pt) => ph && pt wth op::) (succeed []) ps
   fun alt ps = foldr op|| (fail "") ps
@@ -133,7 +153,7 @@ struct
 
   fun maybe f = any -- (fn x => case f x of SOME r => succeed r | _ => fail "")
 
-  fun literal t = satisfy (fn t' => t = t')
+  fun literal t = try (satisfy (fn t' => t = t'))
 
   fun string ts = seq (List.map literal ts)
   fun oneof ts  = alt (List.map literal ts)
@@ -148,6 +168,8 @@ struct
 
   fun (p << q) = first p q
   fun (p >> q) = second p q
+
+  fun done x = eos >> succeed x
 
   fun repeat p  = fix (fn rep => p && rep wth op:: || succeed [])
 
@@ -165,7 +187,7 @@ struct
   fun repeatSkip1 p = p >> repeatSkip p
 
   fun separate1 p q = p && repeat (second q p) wth op::
-  fun separate  p q = separate p q || succeed []
+  fun separate  p q = separate1 p q || succeed []
   fun sepEnd'   p q = first (separate p q) (opt q)
   fun sepEnd1'  p q = separate1 p q << opt q
   fun sepEnd    p q = repeat (p << q)

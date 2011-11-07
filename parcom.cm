@@ -18,9 +18,7 @@ library
 is
 
 
-  $SMACKAGE/cmlib/v0/cmlib.cm
-  src/util/either.sig
-  src/util/either.sml
+  $SMACKAGE/cmlib/v1/cmlib.cm
 
   (* parcom proper *)
   src/parse.sig

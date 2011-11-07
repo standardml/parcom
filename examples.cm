@@ -1,6 +1,6 @@
 Group is
 
-$SMACKAGE/cmlib/v0/cmlib.cm
+$SMACKAGE/cmlib/v1/cmlib.cm
 parcom.cm
 
 examples/receipt.sml

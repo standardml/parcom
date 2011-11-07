@@ -85,7 +85,7 @@ struct
     fun dig d = if Char.isDigit d then Char.ord d - Char.ord #"0"
 		else Char.ord (Char.toLower d) - Char.ord #"a" + 10
 
-    fun transnum b     = List.foldl (fn (s, d) => b*s + d) 0
+    fun transnum b     = List.foldl (fn (s, d) => b*d + s) 0
     val decimal        = repeat1 digit wth transnum 10 o List.map dig
     val hexadecimal    = repeat1 hexDigit wth transnum 16 o List.map dig
     val octal          = repeat1 octDigit wth transnum 8 o List.map dig
