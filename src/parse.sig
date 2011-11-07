@@ -3,6 +3,9 @@
 signature BASIC_PARSER =
 sig
 
+    (* type for error messages *)
+    datatype 't message = Unexpected of 't option | Expected of string
+			| Message of string
     (* Parser with token type 't, result type 'a *)
     type ('a, 't) parser
 
@@ -12,14 +15,14 @@ sig
     val fail : string -> ('a, 't) parser
 
     (* check for end of input *)
-    val done : 'a -> ('a, 't) parser
+    val eos : (unit, 't) parser
     (* admit anything, provided there's something on the input *)
     val any : ('t, 't) parser
 
     (* sequential successful composition of parsers *)
     val -- : ('a, 't) parser * ('a -> ('b, 't) parser) -> ('b, 't) parser
     (* sequential failing composition of parsers *)
-    val ## : ('a, 't) parser * (Pos.t -> ('a, 't) parser) -> ('a, 't) parser
+    (*    val ## : ('a, 't) parser * (Pos.t -> ('a, 't) parser) -> ('a, 't) parser*)
     (* fail-fast composition of parsers *)
     val <|> : ('a, 't) parser * ('a, 't) parser -> ('a, 't) parser
     (* error reporting combinator *)
@@ -32,7 +35,7 @@ sig
     val !! : ('a, 't) parser  -> ('a * Pos.t, 't) parser
 
     (* get position *)
-    val get : (Pos.t -> ('a, 't) parser) -> ('a, 't) parser
+    (*val get : (Pos.t -> ('a, 't) parser) -> ('a, 't) parser*)
 
     (* to handle mutually-recursive parsers *)
     val $ : (unit -> ('a, 't) parser) -> ('a, 't) parser
@@ -41,22 +44,29 @@ sig
     val fix : (('a, 't) parser -> ('a, 't) parser) -> ('a, 't) parser
 
     (* re-parse same input, given result of first parse *)
-    val lookahead : ('a, 't) parser -> ('a -> ('b, 't) parser) -> 
-                      ('b, 't) parser
+    (*val lookahead : ('a, 't) parser -> ('a -> ('b, 't) parser) -> 
+                      ('b, 't) parser*)
 
     (* parse this stream before reading any other input *)
     (*val push : ('t * Pos.t) Stream.stream -> 
                 ('a, 't) parser -> ('a, 't) parser *)
 
     (* parse a stream *)
-    val parse : ('a, 't) parser -> ('t * Pos.t) Stream.stream -> 
-                 'a option
+    val runParser   : ('a, 't) parser -> ('t * Coord.t) Stream.stream ->
+		      (Pos.t * 't message list, 'a) Sum.sum
+    val parse       : ('t message -> string) -> ('a, 't) parser ->
+		      ('t * Coord.t) Stream.stream -> (string, 'a) Sum.sum
+    val simpleParse : ('a, 't) parser -> ('t * Coord.t) Stream.stream ->
+		      (string, 'a) Sum.sum
+
+    (* default message printer *)
+    val messageToString : 't message -> string
 
     (* transform p s
 
        parses consecutive maximal prefixes of s with p as many times
        as possible, outputting the results as a stream *)
-    val transform : ('a, 't) parser -> ('t * Pos.t) Stream.stream -> 
+    val transform : ('a, 't) parser -> ('t * Coord.t) Stream.stream -> 
                      'a Stream.stream
 
 end
@@ -86,8 +96,8 @@ sig
   (* specify success value *)
   val return   : ('b, 't) parser * 'a -> ('a, 't) parser
 
-  (* apply function to failure position *)
-  val guard    : ('a, 't) parser * (Pos.t -> 'b) -> ('a, 't) parser
+  (* end of stream with specific result *)
+  val done : 'a -> ('a, 't) parser
 
   (* n-ary sequential composition *)
   val seq      : ('a, 't) parser list -> ('a list, 't) parser

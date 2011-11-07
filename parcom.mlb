@@ -1,7 +1,7 @@
 (* Combinator parsing *)
 
 $(MLTON_ROOT)/basis/basis.mlb
-$(SMACKAGE)/cmlib/v0/cmlib.mlb
+$(SMACKAGE)/cmlib/v1/cmlib.mlb
 
 (* Parcom proper *)
 local

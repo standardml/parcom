@@ -5,12 +5,14 @@ struct
 
     open ParserCombinators
     infixr 4 << >>
+    infixr 1 ??
 
     type 'a charParser = ('a, char) parser
+    type message = char message
 
-    fun oneOf  xs = satisfy (fn x => List.exists (fn y => x = y) xs)
-    fun noneOf xs = satisfy (fn x => List.all (fn y => x <> y) xs)
-    fun char   x  = satisfy (fn y => x = y)
+    fun oneOf  xs = try (satisfy (fn x => List.exists (fn y => x = y) xs))
+    fun noneOf xs = try (satisfy (fn x => List.all (fn y => x <> y) xs))
+    fun char   x  = try (satisfy (fn y => x = y)) ?? "'" ^ str x ^ "'"
     fun string s  =
         let fun string_aux xs = case xs of
                                     nil        => succeed s
@@ -18,17 +20,32 @@ struct
         in string_aux (String.explode s) end
 
     val anyChar   = any
-    val upper     = satisfy Char.isUpper
-    val lower     = satisfy Char.isLower
-    val letter    = satisfy Char.isAlpha
-    val alphaNum  = satisfy Char.isAlphaNum
-    val digit     = satisfy Char.isDigit
-    val hexDigit  = satisfy Char.isHexDigit
-    val octDigit  = satisfy (fn x => Char.isDigit x andalso Char.<= (x, #"7"))
+    val upper     = try (satisfy Char.isUpper)
+    val lower     = try (satisfy Char.isLower)
+    val letter    = try (satisfy Char.isAlpha)
+    val alphaNum  = try (satisfy Char.isAlphaNum)
+    val digit     = try (satisfy Char.isDigit)
+    val hexDigit  = try (satisfy Char.isHexDigit)
+    val octDigit  = try (satisfy (fn x => Char.isDigit x 
+					  andalso Char.<= (x, #"7")))
     val newLine   = char #"\n"
     val tab       = char #"\t"
-    val space     = satisfy Char.isSpace
+    val space     = try (satisfy Char.isSpace)
     val spaces    = repeatSkip space
     val satisfy   = satisfy
+
+    fun messageToString m =
+	case m of
+	    Unexpected (SOME t) => "unexpected '" ^ str t ^ "'"
+	  | Unexpected NONE     => "unexpected end of stream"
+	  | Expected s          => s
+	  | Message m           => m
+
+    fun parseChars p = parse messageToString p
+    fun parseString p s =
+	let val s = CoordinatedStream.coordinate (fn _ => false) (Coord.init "")
+						 (Stream.fromString s)
+	in parseChars p s
+	end
 
 end
