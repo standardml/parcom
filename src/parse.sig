@@ -52,11 +52,11 @@ sig
                 ('a, 't) parser -> ('a, 't) parser *)
 
     (* parse a stream *)
-    val runParser   : ('a, 't) parser -> ('t * Pos.t) Stream.stream ->
+    val runParser   : ('a, 't) parser -> ('t * Coord.t) Stream.stream ->
 		      (Pos.t * 't message list, 'a) Sum.sum
     val parse       : ('t message -> string) -> ('a, 't) parser ->
-		      ('t * Pos.t) Stream.stream -> (string, 'a) Sum.sum
-    val simpleParse : ('a, 't) parser -> ('t * Pos.t) Stream.stream ->
+		      ('t * Coord.t) Stream.stream -> (string, 'a) Sum.sum
+    val simpleParse : ('a, 't) parser -> ('t * Coord.t) Stream.stream ->
 		      (string, 'a) Sum.sum
 
     (* default message printer *)
@@ -66,7 +66,7 @@ sig
 
        parses consecutive maximal prefixes of s with p as many times
        as possible, outputting the results as a stream *)
-    val transform : ('a, 't) parser -> ('t * Pos.t) Stream.stream -> 
+    val transform : ('a, 't) parser -> ('t * Coord.t) Stream.stream -> 
                      'a Stream.stream
 
 end

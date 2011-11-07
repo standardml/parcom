@@ -6,76 +6,75 @@ struct
 
   type pos = Pos.t
   type coord = Coord.coord
-  type 't stream = ('t * pos) Stream.stream
+  type 't stream = ('t * coord) Stream.stream
   open Sum
 
   datatype 't message  = Unexpected of 't option | Expected of string
 		       | Message of string
-  type ('a, 't) parser = bool ref -> pos * 't stream ->
-			 (pos * 't message list, 'a * pos * pos * 't stream) sum
+  type ('a, 't) parser = bool ref -> coord * 't stream ->
+			 (pos * 't message list, 'a * pos * coord * 't stream) sum
 
   infix  2 -- ##
   infixr 1 <|> ??
 
   (* Primitive Parsers *)
 
-  fun succeed x _ (pos, ts) = INR (x, pos, pos, ts)
-  fun fail s _ (pos, ts) = INL (pos, [Message s])
+  fun succeed x _ (c, ts) = INR (x, Pos.pos c c, c, ts)
+  fun fail    s _ (c, ts) = INL (Pos.pos c c, [Message s])
 
-  fun eos _ (pos, ts) =
+  fun eos _ (c, ts) =
       case Stream.front ts of
-	  Stream.Nil => INR ((), pos, pos, ts)
-	| Stream.Cons ((x, _), _) => INL (pos, [Unexpected (SOME x)])
+	  Stream.Nil => INR ((), Pos.pos c c, c, ts)
+	| Stream.Cons ((x, c), _) => INL (Pos.pos c c, [Unexpected (SOME x)])
 
-  fun any b (pos, ts) =
+  fun any b (c, ts) =
         case Stream.front ts of
-            Stream.Nil => INL (pos, [Unexpected NONE])
-          | Stream.Cons ((x, pos), ts) => (b := true; INR (x, pos, pos, ts))
+            Stream.Nil => INL (Pos.pos c c, [Unexpected NONE])
+          | Stream.Cons ((x, c), ts) => (b := true; INR (x, Pos.pos c c, c, ts))
 
-  fun (p -- q) b (pos, ts) =
-      bindR (p b (pos, ts))
-	    (fn (x, posx, pos, ts) =>
+  fun (p -- q) b (c, ts) =
+      bindR (p b (c, ts))
+	    (fn (x, posx, c, ts) =>
 		let val nb = ref false
 		in map (fn e => (b := (!b orelse !nb); e))
-		       (fn (y, posy, pos, ts) => (y, Pos.union posx posy, pos, ts))
-		       (q x nb (pos, ts))
+		       (fn (y, posy, c, ts) => (y, Pos.union posx posy, c, ts))
+		       (q x nb (c, ts))
 		end)
 
-  fun (p ## q) b (pos, ts) =
-      case p b (pos, ts) of
-	  INL (pf, errs) => q pf b (pos, ts)
+  fun (p ## q) b (c, ts) =
+      case p b (c, ts) of
+	  INL (pf, errs) => q pf b (c, ts)
 	| INR x => INR x
 
-  fun (p <|> q) b (pos, ts) =
-      bindL (p b (pos, ts)) (fn e => if !b then INL e else q b (pos, ts))
+  fun (p <|> q) b (c, ts) =
+      bindL (p b (c, ts)) (fn e => if !b then INL e else q b (c, ts))
 
-  fun try p b (pos, ts) =
-      mapL (fn e => (b := false; e)) (p b (pos, ts))
+  fun try p b (c, ts) =
+      mapL (fn e => (b := false; e)) (p b (c, ts))
 
-  fun (p ?? s) b (pos, ts) =
-      mapL (fn (pos, errs) => (pos, errs @ [Expected s])) (p b (pos, ts))
+  fun (p ?? s) b (c, ts) =
+      mapL (fn (pos, errs) => (pos, errs @ [Expected s])) (p b (c, ts))
 
-  fun lookahead p q b (pos, ts) =
-      bindR (p b (pos, ts)) (fn (x, _, _, _) => q x b (pos, ts))
+  fun lookahead p q b (c, ts) =
+      bindR (p b (c, ts)) (fn (x, _, _, _) => q x b (c, ts))
 
-  fun !! p b (pos, ts) =
-      mapR (fn (x, posx, pos, ts) => ((x, posx), posx, pos, ts)) (p b (pos, ts))
+  fun !! p b (c, ts) =
+      mapR (fn (x, posx, c, ts) => ((x, posx), posx, c, ts)) (p b (c, ts))
 
-  fun get f b (pos, ts) = f pos b (pos, ts)
+  fun get f b (c, ts) = f (Pos.pos c c) b (c, ts)
       
-  fun $ p b (pos, ts) = p () b (pos, ts)
+  fun $ p b (c, ts) = p () b (c, ts)
 
-  fun fix f b (pos, ts) = f (fix f) b (pos, ts)
+  fun fix f b (c, ts) = f (fix f) b (c, ts)
 
   val initc        = Coord.init ""
-  val initpos      = Pos.pos initc initc
 
   fun runParser (p : ('a, 't) parser) ts =
-      mapR #1 (p (ref false) (initpos, ts))
+      mapR #1 (p (ref false) (initc, ts))
   fun parsewith s f p =
       sum f s o runParser p
 
-(*  fun push ns p (pos, ts) =
+  (*  fun push ns p (pos, ts) =
       p (initpos, Stream.append ns ts)*)
   fun messageToString m =
       case m of
@@ -101,7 +100,7 @@ struct
 	  fun msg msgs = (String.concatWith ". " o List.map (fn Message m => m))
 			     (List.filter (fn Message _ => true | _ => false) msgs)
       in "Parse error at " ^ Pos.toString p ^ ": " ^
-	 unex msgs ^ exp msgs ^ msg msgs
+	 unex msgs ^ exp msgs ^ msg msgs ^ "\n"
       end
 
   fun parse fmt p = mapL (printError fmt) o runParser p
@@ -115,7 +114,7 @@ struct
                 Stream.Cons (x, Stream.lazy (trans (pos', ts')))
 	      | INL _ => Stream.Nil
     in
-        Stream.lazy (trans (initpos, ts))
+        Stream.lazy (trans (initc, ts))
     end
 
 end

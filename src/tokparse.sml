@@ -46,19 +46,19 @@ struct
     val name           =
         Lang.identStart && repeat Lang.identLetter wth implode o op::
     val identifier     =
-	lexeme (name suchthat (fn x => notElem x Lang.reservedNames))
+	try (lexeme (name suchthat (fn x => notElem x Lang.reservedNames)))
     fun reserved kw    =
 	if elem kw Lang.reservedNames then
-	    lexeme (name suchthat (fn x => x = kw)) return ()
+	    try (lexeme (name suchthat (fn x => x = kw)) return ())
 	else fail "Not a reserved name"
 
     val opName         =
         Lang.opStart && repeat Lang.opLetter wth implode o op::
     val operator       =
-	lexeme (opName suchthat (fn x => notElem x Lang.reservedOpNames))
+	try (lexeme (opName suchthat (fn x => notElem x Lang.reservedOpNames)))
     fun reservedOp rop =
 	if elem rop Lang.reservedOpNames then
-	    lexeme (opName suchthat (fn x => x = rop)) return ()
+	    try (lexeme (opName suchthat (fn x => x = rop)) return ())
 	else fail "Not a reserved operator"
 
     fun parens p       = middle (symbol "(") p (symbol ")")

@@ -95,7 +95,8 @@ sig
     val messageToString : message -> string
 
     (* Parse function that uses the default formatter for char streams *)
-    val parseChars : 'a charParser -> (char * Pos.t) Stream.stream ->
+    val parseChars  : 'a charParser -> (char * Coord.t) Stream.stream ->
 		     (string, 'a) Sum.sum
+    val parseString : 'a charParser -> string -> (string, 'a) Sum.sum
 
 end

@@ -20,7 +20,7 @@ struct
   infixr 3 &&
   infix  2 -- ##
   infix  2 wth suchthat return guard when
-  infixr 1 || <|>
+  infixr 1 || <|> ??
 
   val price   : int charParser =
     repeat1 digit && (char #"." >> digit && digit << spaces) when
@@ -32,7 +32,7 @@ struct
       <|> (repeat1 letter >> spaces >> price << char #";" << spaces)
 
   val receipt : bool charParser =
-    spaces >> repeat product && total wth
+    spaces >> repeat product && total << eos wth
       (fn (ps, tot) => List.foldl op+ 0 ps = tot)
 
 end
@@ -48,7 +48,7 @@ struct
   infixr 3 &&
   infix  2 -- ##
   infix  2 wth suchthat return guard when
-  infixr 1 || <|>
+  infixr 1 || <|> ??
 
   structure ReceiptDef :> LANGUAGE_DEF =
   (* can also use the SimpleStyle functor from langparse.sml *)
@@ -75,47 +75,36 @@ struct
   open RTP
 
   val price   =
-    lexeme (repeat1 digit && (char #"." >> digit && digit)) when
-      (fn (xs, (y, z)) => Int.fromString (String.implode (xs@[y,z])))
+      (lexeme (repeat1 digit && (char #"." >> digit && digit)) when
+	      (fn (xs, (y, z)) => Int.fromString (String.implode (xs@[y,z]))))
 
   val total   = price << reserved "total"
   val product =
-      (reserved "return" >> price << symbol ";" wth op~) ||
+      (reserved "return" >> price << symbol ";" wth op~) <|>
       (identifier >> price << symbol ";")
   val receipt =
-      repeat product && total wth (fn (xs, tot) => List.foldl op+ 0 xs = tot)
+      (repeat product && total << eos wth (fn (xs, tot) => List.foldl op+ 0 xs = tot))
 
 end
 
 fun printRes pr =
     print (Sum.sumR (fn b => Bool.toString b ^ "\n") pr)
 
-fun markstream s fileName =
-    let
-	val initcoord  = Coord.init fileName
-	fun aux xs crd =
-	    Stream.lazy (fn _ => case Stream.front xs of
-				     Stream.Nil          => Stream.Nil
-				   | Stream.Cons (x, xs) =>
-				     Stream.Cons ((x, Pos.pos crd crd),
-						  (aux xs (Coord.nextchar crd))))
-    in aux s initcoord
-    end
-
 (* returns: SOME true *)
-val example1 =
-    markstream (Stream.fromString "book 12.00; plant 2.55; 14.55 total") ""
+val example1 = "book 12.00; plant 2.55; 14.55 total"
 
 (* returns: SOME false *)
-val example2 =
-    markstream (Stream.fromString "book 12.00; plant 2.55; 12.55 total") ""
+val example2 = "book 12.00; plant 2.55; 12.55 total"
+
+val example3 = "book 12.00; 14.55 total; plant 2.55"
+
+fun doit s = printRes (CharParser.parseString LexReceipt.receipt s)
 
 val _ = print "Lexer-less implementation:\n  Example 1: ";
-    printRes (CharParser.parseChars SimpleReceipt.receipt example1);
+    printRes (CharParser.parseString SimpleReceipt.receipt example1);
     print "  Example 2: ";
-    printRes (CharParser.parseChars SimpleReceipt.receipt example2);
+    printRes (CharParser.parseString SimpleReceipt.receipt example2);
     print "\nToken-parser-using implementation:\n  Example 1: ";
-    printRes (CharParser.parseChars LexReceipt.receipt example1);
+    printRes (CharParser.parseString LexReceipt.receipt example1);
     print "  Example 2: ";
-    printRes (ParserCombinators.simpleParse LexReceipt.receipt example2);
-
+    printRes (CharParser.parseString LexReceipt.receipt example2);
