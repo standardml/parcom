@@ -70,7 +70,7 @@ struct
     val identLetter     = alphaNum <|> oneOf (String.explode "_'")
 
     (* did I miss anything? add to much? *)
-    val opLetter        = oneOf (String.explode ":!#$%&*+./< =>?@\\^|-~")
+    val opLetter        = oneOf (String.explode ":!#$%&*+./<=>?@\\^|-~")
     val opStart         = opLetter
 
     val reservedNames   = Def.reservedNames
