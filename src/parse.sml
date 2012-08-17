@@ -30,13 +30,13 @@ struct
   fun any b (c, ts) =
         case Stream.front ts of
             Stream.Nil => INL (Pos.pos c c, [Unexpected NONE])
-          | Stream.Cons ((x, c), ts) => (b := true; INR (x, Pos.pos c c, c, ts))
+          | Stream.Cons ((x, c'), ts) => (b := true; INR (x, Pos.pos c c', c', ts))
 
   fun (p -- q) b (c, ts) =
       bindR (p b (c, ts))
 	    (fn (x, posx, c, ts) =>
 		let val nb = ref false
-		in map (fn e => (b := (!b orelse !nb); e))
+		in map (fn (posy, ms) => (b := (!b orelse !nb); ((*Pos.union posx*) posy, ms)))
 		       (fn (y, posy, c, ts) => (y, Pos.union posx posy, c, ts))
 		       (q x nb (c, ts))
 		end)
@@ -67,7 +67,7 @@ struct
 
   fun fix f b (c, ts) = f (fix f) b (c, ts)
 
-  val initc        = Coord.init ""
+  val initc        = Coord.init "-"
 
   fun runParser (p : ('a, 't) parser) ts =
       mapR #1 (p (ref false) (initc, ts))
@@ -135,15 +135,14 @@ struct
   infixr 1 || <|> ??
 
   fun p && q = p -- (fn x => q -- (fn y => succeed (x, y)))
-  fun p || q = try p <|> q (*p ## (fn _ => q)*)
+  fun p || q = try p <|> q
 
   fun p wth f      = p -- succeed o f
   fun p suchthat g =
-      p -- (fn x => if g x then succeed x else fail "match failed")
+      p -- (fn x => if g x then succeed x else fail "")
   fun p when f     = 
       p -- (fn x => case f x of SOME r => succeed r | NONE => fail "")
   fun p return x   = p -- (fn _ => succeed x)
-  (*fun p guard g    = p ## (fn errpos => (ignore (g errpos); fail ""))*)
 
   fun seq ps = foldr (fn (ph, pt) => ph && pt wth op::) (succeed []) ps
   fun alt ps = foldr op|| (fail "") ps

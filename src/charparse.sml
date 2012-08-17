@@ -20,16 +20,16 @@ struct
         in string_aux (String.explode s) end
 
     val anyChar   = any
-    val upper     = try (satisfy Char.isUpper)
-    val lower     = try (satisfy Char.isLower)
-    val letter    = try (satisfy Char.isAlpha)
-    val alphaNum  = try (satisfy Char.isAlphaNum)
-    val digit     = try (satisfy Char.isDigit)
-    val hexDigit  = try (satisfy Char.isHexDigit)
+    val upper     = try (satisfy Char.isUpper) ?? "upper case letter"
+    val lower     = try (satisfy Char.isLower) ?? "lower case letter"
+    val letter    = try (satisfy Char.isAlpha) ?? "letter"
+    val alphaNum  = try (satisfy Char.isAlphaNum) ?? "alphanumeric character"
+    val digit     = try (satisfy Char.isDigit) ?? "digit"
+    val hexDigit  = try (satisfy Char.isHexDigit) ?? "hexadecimal digit"
     val octDigit  = try (satisfy (fn x => Char.isDigit x 
-					  andalso Char.<= (x, #"7")))
-    val newLine   = char #"\n"
-    val tab       = char #"\t"
+					  andalso Char.<= (x, #"7"))) ?? "octal digit"
+    val newLine   = char #"\n" ?? "'\n'"
+    val tab       = char #"\t" ?? "'\t'"
     val space     = try (satisfy Char.isSpace)
     val spaces    = repeatSkip space
     val satisfy   = satisfy
@@ -43,7 +43,7 @@ struct
 
     fun parseChars p = parse messageToString p
     fun parseString p s =
-	let val s = CoordinatedStream.coordinate (fn _ => false) (Coord.init "")
+	let val s = CoordinatedStream.coordinate (fn _ => false) (Coord.init "-")
 						 (Stream.fromString s)
 	in parseChars p s
 	end

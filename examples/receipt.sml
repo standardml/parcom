@@ -77,14 +77,16 @@ struct
   val price   =
       (lexeme (repeat1 digit && (char #"." >> digit && digit)) when
 	      (fn (xs, (y, z)) => Int.fromString (String.implode (xs@[y,z]))))
+	  ?? "price expression"
 
-  val total   = price << reserved "total"
+  val total   = price << reserved "total" ?? "total"
   val product =
       (reserved "return" >> price << symbol ";" wth op~) <|>
-      (identifier >> price << symbol ";")
+      (identifier >> price << symbol ";") ?? "product"
   val receipt =
-      (repeat product && total << eos wth (fn (xs, tot) => List.foldl op+ 0 xs = tot))
-
+      (repeat product && total << (eos ?? "end of stream")
+	      wth (fn (xs, tot) => List.foldl op+ 0 xs = tot))
+      
 end
 
 fun printRes pr =
@@ -104,7 +106,11 @@ val _ = print "Lexer-less implementation:\n  Example 1: ";
     printRes (CharParser.parseString SimpleReceipt.receipt example1);
     print "  Example 2: ";
     printRes (CharParser.parseString SimpleReceipt.receipt example2);
+    print "  Example 3: ";
+    printRes (CharParser.parseString SimpleReceipt.receipt example3);
     print "\nToken-parser-using implementation:\n  Example 1: ";
     printRes (CharParser.parseString LexReceipt.receipt example1);
     print "  Example 2: ";
     printRes (CharParser.parseString LexReceipt.receipt example2);
+    print "  Example 3: ";
+    printRes (CharParser.parseString LexReceipt.receipt example3);
