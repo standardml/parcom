@@ -75,12 +75,13 @@ struct
     fun commaSep p     = separate p comma
     fun commaSep1 p    = separate1 p comma
 
-    val charLit        =
-	((string "\\" && (anyChar wth Char.toString) wth op^)
-          when Char.fromString) || anyChar
-    val charLiteral    = middle (char #"'") charLit (symbol "'")
+    val chrEscape      =
+        string "\\" && (anyChar wth Char.toString) wth op^ when Char.fromString
+    val charLiteral    = middle (char #"'") (chrEscape <|> anyChar) (symbol "'")
     val stringLiteral  =
-	(middle (char #"\"") (repeat charLit) (symbol "\"")) wth String.implode
+	(middle (char #"\"")
+            (repeat (chrEscape <|> (anyChar suchthat (fn x => x <> #"\""))))
+            (symbol "\"")) wth String.implode
 
     fun dig d = if Char.isDigit d then Char.ord d - Char.ord #"0"
 		else Char.ord (Char.toLower d) - Char.ord #"a" + 10

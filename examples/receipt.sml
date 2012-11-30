@@ -98,7 +98,7 @@ val example1 = "book 12.00; plant 2.55; 14.55 total"
 (* returns: SOME false *)
 val example2 = "book 12.00; plant 2.55; 12.55 total"
 
-val example3 = "book 12.00; 14.55 total; plant 2.55"
+val example3 = "book 12.00;\n 14.55 total; plant 2.55"
 
 fun doit s = printRes (CharParser.parseString LexReceipt.receipt s)
 
@@ -114,3 +114,4 @@ val _ = print "Lexer-less implementation:\n  Example 1: ";
     printRes (CharParser.parseString LexReceipt.receipt example2);
     print "  Example 3: ";
     printRes (CharParser.parseString LexReceipt.receipt example3);
+

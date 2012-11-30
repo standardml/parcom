@@ -43,7 +43,7 @@ struct
 
     fun parseChars p = parse messageToString p
     fun parseString p s =
-	let val s = CoordinatedStream.coordinate (fn _ => false) (Coord.init "-")
+	let val s = CoordinatedStream.coordinate (fn x => Stream.hd x = #"\n" handle Stream.Empty => false) (Coord.init "-")
 						 (Stream.fromString s)
 	in parseChars p s
 	end
