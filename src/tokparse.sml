@@ -23,20 +23,15 @@ struct
 	     | NONE   => fail "Single-line comments not supported"
 	end
     val mlComment      =
-	case Lang.commentStart of
-	    SOME st =>
-	    (case Lang.commentEnd of
-		 SOME ed =>
-		 let
-		     fun bcNested _    =
-			 ((try (string st) >> $ bcNested >> string ed return ())
-			      <|> anyChar return ()) << $ bcNested
-		     fun bcUnnested _  =
-			 string ed return () || (anyChar >> $ bcUnnested)
-		 in if Lang.nestedComments then $ bcNested else $bcUnnested
-		 end
-	       | NONE => fail "Multi-line comments not supported")
-	  | NONE => fail "Multi-line comments not supported"
+	case (Lang.commentStart, Lang.commentEnd) of
+	    (SOME st, SOME ed) =>
+	    let
+		fun bcNest _   = try (string st) >> $contNest
+		and contNest _ = try (string ed return ()) <|> $bcNest <|> (anyChar >> $contNest) return ()
+		val bcU = try (string st) >> repeat (not (string ed) >> anyChar) >> string ed return ()
+	    in if Lang.nestedComments then $ bcNest else bcU
+	    end
+	  | _ => fail "Multi-line comments not supported"
     val comment        = lineComment <|> mlComment
 
     val whiteSpace     = repeatSkip ((space return ()) || comment)

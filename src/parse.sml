@@ -207,7 +207,7 @@ struct
         (fn (v, ts) => List.foldl (fn ((f, vr), vl) => f (vl, vr)) v ts)
   fun chainl  p opp d = chainl1 p opp <|> succeed d
 
-  fun not p = try (p >> fail "unexpected token") <|> succeed ()
+  fun not p = try ((p >> fail "unexpected token") <|> succeed ())
 
   (***** pre/in/post-fix parsing *****)
 
