@@ -1,5 +1,5 @@
-require: cmlib v1
 provides: parcom ###VERSION###
+requires: cmlib v1.1
 remote: git git://github.com/standardml/parcom.git
 description: A parser combinator library
 keywords: text, parsing
