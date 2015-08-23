@@ -27,7 +27,8 @@ struct
 	    (SOME st, SOME ed) =>
 	    let
 		fun bcNest _   = try (string st) >> $contNest
-		and contNest _ = try (string ed return ()) <|> $bcNest <|> (anyChar >> $contNest) return ()
+		and contNest _ = try (string ed return ())
+                                 <|> ($bcNest <|> (anyChar return ())) >> $contNest
 		val bcU = try (string st) >> repeat (not (string ed) >> anyChar) >> string ed return ()
 	    in if Lang.nestedComments then $ bcNest else bcU
 	    end
