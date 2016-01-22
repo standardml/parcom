@@ -97,7 +97,7 @@ struct
 		  [] => ""
 		| [x] => "Expected " ^ fmt x ^ ". "
 		| x :: xs  => "Expected " ^ fmt x ^ exps xs
-	  fun msg msgs = (String.concatWith ". " o List.map (fn Message m => m))
+	  fun msg msgs = (String.concatWith ". " o List.map (fn Message m => m | _ => raise Match))
 			     (List.filter (fn Message _ => true | _ => false) msgs)
       in "Parse error at " ^ Pos.toString p ^ ": " ^
 	 unex msgs ^ exp msgs ^ msg msgs ^ "\n"
