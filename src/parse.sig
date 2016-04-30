@@ -165,6 +165,9 @@ sig
   (* parse with the first parser until the other parser succeeds *)
   val until    : ('a, 't) parser -> ('b, 't) parser -> ('a list, 't) parser
 
+  (* parse with the first parser until the other parser succeeds and accumulate results *)
+  val manyTill : ('a, 't) parser -> ('b, 't) parser -> ('a list, 't) parser
+
   (* nested parsers *)
   val join     : (('a, 't) parser, 't) parser -> ('a, 't) parser
 

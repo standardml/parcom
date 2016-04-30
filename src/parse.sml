@@ -193,9 +193,13 @@ struct
 
   fun join p = p -- (fn q => q)
 
-  fun until    p q =
+  fun until p q =
       let fun aux _ = (q return []) <|> p >> $ aux
       in $ aux end
+
+  fun manyTill p q =
+    let fun aux _ = (q return []) <|> p && $ aux wth (fn (x, xs) => x::xs)
+    in $ aux end
 
   (* chaining of parsers *)
   fun chainr1 p opp   =
